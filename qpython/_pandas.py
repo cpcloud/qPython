@@ -72,6 +72,7 @@ class PandasQReader(QReader):
 
             odict = OrderedDict()
             meta = MetaData(qtype = QTABLE)
+            strcols = []
             for i in xrange(len(columns)):
                 if isinstance(data[i], str):
                     # convert character list (represented as string) to numpy representation
@@ -83,12 +84,16 @@ class PandasQReader(QReader):
                     for j in xrange(len(data[i])):
                         tarray[j] = data[i][j]
                     odict[columns[i]] = tarray
+                    strcols.append(columns[i])
                 else:
                     meta[columns[i]] = data[i].meta.qtype
                     odict[columns[i]] = data[i]
 
             df = pandas.DataFrame(odict)
             df.meta = meta
+            for column in strcols:
+                # q uses the space character as the NULL value for strings
+                df[column] = df[column].replace([' ', ''], numpy.nan)
             return df
         else:
             return QReader._read_table(self, qtype = qtype, options = options)
