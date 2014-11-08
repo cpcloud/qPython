@@ -84,7 +84,6 @@ class PandasQReader(QReader):
                     for j in xrange(len(data[i])):
                         tarray[j] = data[i][j]
                     odict[columns[i]] = tarray
-                    strcols.append(columns[i])
                 else:
                     meta[columns[i]] = data[i].meta.qtype
                     odict[columns[i]] = data[i]
