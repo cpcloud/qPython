@@ -81,11 +81,7 @@ class PandasQReader(QReader):
                     strcols.append(columns[i])
                 elif isinstance(data[i], (list, tuple)):
                     meta[columns[i]] = QGENERAL_LIST
-                    tarray = numpy.ndarray(shape = len(data[i]), dtype = numpy.dtype('O'))
-                    for j in xrange(len(data[i])):
-                        tarray[j] = data[i][j]
-                    odict[columns[i]] = tarray
-                    strcols.append(columns[i])
+                    odict[columns[i]] = numpy.array(data[i], dtype=object)
                 else:
                     meta[columns[i]] = data[i].meta.qtype
                     odict[columns[i]] = data[i]
