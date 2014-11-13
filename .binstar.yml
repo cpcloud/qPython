@@ -15,8 +15,7 @@ before_script:
 
 script:
   - conda build conda.recipe
-  - conda install --use-local qpython
-  - conda install pytest
+  - conda install --use-local qpython pytest
   - py.test
 
 build_targets: conda
