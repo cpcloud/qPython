@@ -3,7 +3,6 @@ user: cpcloud
 
 platform:
  - win-64
- - win-32
  - linux-32
  - linux-64
  - osx-64
@@ -16,7 +15,7 @@ before_script:
 
 script:
   - conda build conda.recipe
-  - conda install --use-local qpython pytest
+  - conda install --use-local "qpython > 1.0.2" pytest
   - py.test
 
 build_targets: conda
