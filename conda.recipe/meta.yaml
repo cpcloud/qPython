@@ -26,6 +26,7 @@ test:
     - qpython
 
   commands:
+    - cd ..
     - py.test
 
 about:
