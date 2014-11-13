@@ -19,15 +19,8 @@ requirements:
     - pandas
 
 test:
-  requires:
-    - pytest
-
   imports:
     - qpython
-
-  commands:
-    - cd ..
-    - py.test
 
 about:
   home: https://github.com/exxeleron/qPython
