@@ -22,11 +22,8 @@ test:
   requires:
     - pytest
 
-  imports:
-    - qpython
-
   commands:
-    - py.test --pyargs qpython
+    - py.test -x --pyargs qpython
 
 about:
   home: https://github.com/exxeleron/qPython

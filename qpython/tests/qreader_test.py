@@ -1,29 +1,31 @@
-# 
+#
 #  Copyright (c) 2011-2014 Exxeleron GmbH
-# 
+#
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-# 
+#
 #    http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-# 
+#
 
 import binascii
 import cStringIO
 import struct
 import sys
+import os
 
 from collections import OrderedDict
 from qpython import qreader
 from qpython.qtype import *  # @UnusedWildImport
 from qpython.qcollection import qlist, QList, QTemporalList, QDictionary, qtable, QKeyedTable
 from qpython.qtemporal import qtemporal, QTemporal
+from qpython.tests import testdir
 
 
 
@@ -56,7 +58,7 @@ EXPRESSIONS = OrderedDict((
                     ('0D05:36:57.600 0Nn',                            qlist(numpy.array([long(20217600000000), qnull(QTIMESPAN)]), qtype=QTIMESPAN_LIST)),
                     ('0D05:36:57.600',                                qtemporal(numpy.timedelta64(20217600000000, 'ns'), qtype=QTIMESPAN)),
                     ('0Nn',                                           qtemporal(numpy.timedelta64('NaT', 'ns'), qtype=QTIMESPAN)),
-                     
+
                     ('::',                                            None),
                     ('1+`',                                           QException('type')),
                     ('1',                                             numpy.int64(1)),
@@ -65,7 +67,7 @@ EXPRESSIONS = OrderedDict((
                     ('0b',                                            numpy.bool_(False)),
                     ('1b',                                            numpy.bool_(True)),
                     ('0x2a',                                          numpy.byte(0x2a)),
-                    ('89421099511627575j',                            numpy.int64(89421099511627575L)),   
+                    ('89421099511627575j',                            numpy.int64(89421099511627575L)),
                     ('5.5e',                                          numpy.float32(5.5)),
                     ('3.234',                                         numpy.float64(3.234)),
                     ('"0"',                                           '0'),
@@ -105,7 +107,7 @@ EXPRESSIONS = OrderedDict((
                     ('("quick"; "brown"; "fox"; "jumps"; "over"; "a lazy"; "dog")',
                                                                       ['quick', 'brown', 'fox', 'jumps', 'over', 'a lazy', 'dog']),
                     ('("quick"; " "; "fox"; "jumps"; "over"; "a lazy"; "dog")',
-                                                                      ['quick', ' ', 'fox', 'jumps', 'over', 'a lazy', 'dog']),                           
+                                                                      ['quick', ' ', 'fox', 'jumps', 'over', 'a lazy', 'dog']),
                     ('{x+y}',                                         QLambda('{x+y}')),
                     ('{x+y}[3]',                                      QProjection([QLambda('{x+y}'), numpy.int64(3)])),
                     ('insert [1]',                                    QProjection([QFunction(0), numpy.int64(1)])),
@@ -119,13 +121,13 @@ EXPRESSIONS = OrderedDict((
                     ('sums',                                          QFunction(0)),
                     ('prev',                                          QFunction(0)),
 
-                    ('(enlist `a)!(enlist 1)',                        QDictionary(qlist(numpy.array(['a']), qtype = QSYMBOL_LIST), 
+                    ('(enlist `a)!(enlist 1)',                        QDictionary(qlist(numpy.array(['a']), qtype = QSYMBOL_LIST),
                                                                                   qlist(numpy.array([1], dtype=numpy.int64), qtype=QLONG_LIST))),
                     ('1 2!`abc`cdefgh',                               QDictionary(qlist(numpy.array([1, 2], dtype=numpy.int64), qtype=QLONG_LIST),
                                                                                   qlist(numpy.array(['abc', 'cdefgh']), qtype = QSYMBOL_LIST))),
                     ('`abc`def`gh!([] one: 1 2 3; two: 4 5 6)',       QDictionary(qlist(numpy.array(['abc', 'def', 'gh']), qtype = QSYMBOL_LIST),
-                                                                                  qtable(qlist(numpy.array(['one', 'two']), qtype = QSYMBOL_LIST), 
-                                                                                         [qlist(numpy.array([1, 2, 3]), qtype = QLONG_LIST), 
+                                                                                  qtable(qlist(numpy.array(['one', 'two']), qtype = QSYMBOL_LIST),
+                                                                                         [qlist(numpy.array([1, 2, 3]), qtype = QLONG_LIST),
                                                                                           qlist(numpy.array([4, 5, 6]), qtype = QLONG_LIST)]))),
                     ('(0 1; 2 3)!`first`second',                      QDictionary([qlist(numpy.array([0, 1], dtype=numpy.int64), qtype=QLONG_LIST), qlist(numpy.array([2, 3], dtype=numpy.int64), qtype=QLONG_LIST)],
                                                                                    qlist(numpy.array(['first', 'second']), qtype = QSYMBOL_LIST))),
@@ -133,27 +135,27 @@ EXPRESSIONS = OrderedDict((
                                                                                   [numpy.string_('one'), qlist(numpy.array([2, 3], dtype=numpy.int64), qtype=QLONG_LIST), '456', [numpy.int64(7), qlist(numpy.array([8, 9], dtype=numpy.int64), qtype=QLONG_LIST)]])),
                     ('`A`B`C!((1;3.234;3);(`x`y!(`a;2));5.5e)',       QDictionary(qlist(numpy.array(['A', 'B', 'C']), qtype = QSYMBOL_LIST),
                                                                                   [[numpy.int64(1), numpy.float64(3.234), numpy.int64(3)], QDictionary(qlist(numpy.array(['x', 'y']), qtype = QSYMBOL_LIST), ['a', numpy.int64(2)]), numpy.float32(5.5)])),
-                     
-                    ('flip `abc`def!(1 2 3; 4 5 6)',                  qtable(qlist(numpy.array(['abc', 'def']), qtype = QSYMBOL_LIST), 
-                                                                             [qlist(numpy.array([1, 2, 3]), qtype = QLONG_LIST), 
+
+                    ('flip `abc`def!(1 2 3; 4 5 6)',                  qtable(qlist(numpy.array(['abc', 'def']), qtype = QSYMBOL_LIST),
+                                                                             [qlist(numpy.array([1, 2, 3]), qtype = QLONG_LIST),
                                                                               qlist(numpy.array([4, 5, 6]), qtype = QLONG_LIST)])),
                     ('flip `name`iq!(`Dent`Beeblebrox`Prefect;98 42 126)',
                                                                       qtable(qlist(numpy.array(['name', 'iq']), qtype = QSYMBOL_LIST),
-                                                                             [qlist(numpy.array(['Dent', 'Beeblebrox', 'Prefect']), qtype = QSYMBOL_LIST), 
+                                                                             [qlist(numpy.array(['Dent', 'Beeblebrox', 'Prefect']), qtype = QSYMBOL_LIST),
                                                                               qlist(numpy.array([98, 42, 126]), qtype = QLONG_LIST)])),
                     ('flip `name`iq`grade!(`Dent`Beeblebrox`Prefect;98 42 126;"a c")',
                                                                       qtable(qlist(numpy.array(['name', 'iq', 'grade']), qtype = QSYMBOL_LIST),
-                                                                             [qlist(numpy.array(['Dent', 'Beeblebrox', 'Prefect']), qtype = QSYMBOL_LIST), 
+                                                                             [qlist(numpy.array(['Dent', 'Beeblebrox', 'Prefect']), qtype = QSYMBOL_LIST),
                                                                               qlist(numpy.array([98, 42, 126]), qtype = QLONG_LIST),
                                                                               "a c"])),
                     ('flip `name`iq`fullname!(`Dent`Beeblebrox`Prefect;98 42 126;("Arthur Dent"; "Zaphod Beeblebrox"; "Ford Prefect"))',
                                                                       qtable(qlist(numpy.array(['name', 'iq', 'fullname']), qtype = QSYMBOL_LIST),
-                                                                             [qlist(numpy.array(['Dent', 'Beeblebrox', 'Prefect']), qtype = QSYMBOL_LIST), 
+                                                                             [qlist(numpy.array(['Dent', 'Beeblebrox', 'Prefect']), qtype = QSYMBOL_LIST),
                                                                               qlist(numpy.array([98, 42, 126]), qtype = QLONG_LIST),
                                                                               ["Arthur Dent", "Zaphod Beeblebrox", "Ford Prefect"]])),
                     ('flip `name`iq`fullname!(`Dent`Beeblebrox`Prefect;98 42 126;("Arthur Dent"; " "; "Ford Prefect"))',
                                                                       qtable(qlist(numpy.array(['name', 'iq', 'fullname']), qtype = QSYMBOL_LIST),
-                                                                             [qlist(numpy.array(['Dent', 'Beeblebrox', 'Prefect']), qtype = QSYMBOL_LIST), 
+                                                                             [qlist(numpy.array(['Dent', 'Beeblebrox', 'Prefect']), qtype = QSYMBOL_LIST),
                                                                               qlist(numpy.array([98, 42, 126]), qtype = QLONG_LIST),
                                                                               ["Arthur Dent", " ", "Ford Prefect"]])),
                     ('([] sc:1 2 3; nsc:(1 2; 3 4; 5 6 7))',          qtable(qlist(numpy.array(['sc', 'nsc']), qtype = QSYMBOL_LIST),
@@ -167,20 +169,20 @@ EXPRESSIONS = OrderedDict((
                                                                                qlist(numpy.array([3, 4]), qtype = QLONG_LIST),
                                                                                qlist(numpy.array([5, 6]), qtype = QLONG_LIST)]])),
                     ('([] name:`symbol$(); iq:`int$())',              qtable(qlist(numpy.array(['name', 'iq']), qtype = QSYMBOL_LIST),
-                                                                            [qlist(numpy.array([], dtype=numpy.string_), qtype = QSYMBOL_LIST), 
+                                                                            [qlist(numpy.array([], dtype=numpy.string_), qtype = QSYMBOL_LIST),
                                                                              qlist(numpy.array([]), qtype = QINT_LIST)])),
-                    ('([] pos:`d1`d2`d3;dates:(2001.01.01;2000.05.01;0Nd))', 
+                    ('([] pos:`d1`d2`d3;dates:(2001.01.01;2000.05.01;0Nd))',
                                                                       qtable(qlist(numpy.array(['pos', 'dates']), qtype = QSYMBOL_LIST),
-                                                                             [qlist(numpy.array(['d1', 'd2', 'd3']), qtype = QSYMBOL_LIST), 
+                                                                             [qlist(numpy.array(['d1', 'd2', 'd3']), qtype = QSYMBOL_LIST),
                                                                               qlist(numpy.array([366, 121, qnull(QDATE)]), qtype=QDATE_LIST)])),
                     ('([eid:1001 1002 1003] pos:`d1`d2`d3;dates:(2001.01.01;2000.05.01;0Nd))',
                                                                       QKeyedTable(qtable(qlist(numpy.array(['eid']), qtype = QSYMBOL_LIST),
                                                                                          [qlist(numpy.array([1001, 1002, 1003]), qtype = QLONG_LIST)]),
                                                                                   qtable(qlist(numpy.array(['pos', 'dates']), qtype = QSYMBOL_LIST),
-                                                                                         [qlist(numpy.array(['d1', 'd2', 'd3']), qtype = QSYMBOL_LIST), 
+                                                                                         [qlist(numpy.array(['d1', 'd2', 'd3']), qtype = QSYMBOL_LIST),
                                                                                           qlist(numpy.array([366, 121, qnull(QDATE)]), qtype = QDATE_LIST)]))
                                                                       ),
-                                                                                 
+
                   ))
 
 
@@ -209,9 +211,9 @@ NUMPY_TEMPORAL_EXPRESSIONS = OrderedDict((
                     ('0D05:36:57.600 0Nn',                            qlist(numpy.array([numpy.timedelta64(20217600000000, 'ns'), numpy.timedelta64('nat', 'ns')]), qtype = QTIMESPAN_LIST)),
                     ('0D05:36:57.600',                                numpy.timedelta64(20217600000000, 'ns')),
                     ('0Nn',                                           numpy.timedelta64('NaT', 'ns')),
-                    ('([] pos:`d1`d2`d3;dates:(2001.01.01;2000.05.01;0Nd))', 
+                    ('([] pos:`d1`d2`d3;dates:(2001.01.01;2000.05.01;0Nd))',
                                                                       qtable(['pos', 'dates'],
-                                                                            [qlist(numpy.array(['d1', 'd2', 'd3']), qtype = QSYMBOL_LIST), 
+                                                                            [qlist(numpy.array(['d1', 'd2', 'd3']), qtype = QSYMBOL_LIST),
                                                                              numpy.array([numpy.datetime64('2001-01-01'), numpy.datetime64('2000-05-01'), numpy.datetime64('NaT')], dtype='datetime64[D]')])),
                     ))
 
@@ -233,23 +235,23 @@ COMPRESSED_EXPRESSIONS = OrderedDict((
 def arrays_equal(left, right):
     if type(left) != type(right):
         return False
-    
+
     if type(left) == numpy.ndarray and left.dtype != right.dtype:
         print 'Type comparison failed: %s != %s' % (left.dtype, right.dtype)
         return False
-    
+
     if type(left) == QList and left.meta.qtype != right.meta.qtype:
         print 'QType comparison failed: %s != %s' % (left.meta.qtype, right.meta.qtype)
         return False
-    
+
     if len(left) != len(right):
         return False
-    
+
     for i in xrange(len(left)):
         if type(left[i]) != type(right[i]):
             print 'Type comparison failed: %s != %s' % (type(left[i]), type(right[i]))
             return False
-    
+
         if not compare(left[i], right[i]):
             print 'Value comparison failed: %s != %s' % ( left[i], right[i])
             return False
@@ -272,8 +274,8 @@ def compare(left, right):
 
 def test_reading():
     BINARY = OrderedDict()
-    
-    with open('tests/QExpressions3.out', 'rb') as f:
+
+    with open(os.path.join(os.path.dirname(__file__), 'QExpressions3.out'), 'rb') as f:
         while True:
             query = f.readline().strip()
             binary = f.readline().strip()
@@ -288,29 +290,29 @@ def test_reading():
     for query, value in EXPRESSIONS.iteritems():
         buffer_ = cStringIO.StringIO()
         binary = binascii.unhexlify(BINARY[query])
-        
+
         buffer_.write('\1\0\0\0')
         buffer_.write(struct.pack('i', len(binary) + 8))
         buffer_.write(binary)
         buffer_.seek(0)
-        
+
         sys.stdout.write( '  %-75s' % query )
         try:
             header = buffer_reader.read_header(source = buffer_.getvalue())
             result = buffer_reader.read_data(message_size = header.size, is_compressed = header.is_compressed, raw = True)
             assert compare(buffer_.getvalue()[8:], result), 'raw reading failed: %s' % (query)
-            
+
             stream_reader = qreader.QReader(buffer_)
             result = stream_reader.read(raw = True).data
             assert compare(buffer_.getvalue()[8:], result), 'raw reading failed: %s' % (query)
 
             result = buffer_reader.read(source = buffer_.getvalue()).data
             assert compare(value, result), 'deserialization failed: %s, expected: %s actual: %s' % (query, value, result)
-            
+
             header = buffer_reader.read_header(source = buffer_.getvalue())
             result = buffer_reader.read_data(message_size = header.size, is_compressed = header.is_compressed)
             assert compare(value, result), 'deserialization failed: %s' % (query)
-            
+
             buffer_.seek(0)
             stream_reader = qreader.QReader(buffer_)
             result = stream_reader.read().data
@@ -325,8 +327,8 @@ def test_reading():
 
 def test_reading_numpy_temporals():
     BINARY = OrderedDict()
-    
-    with open('tests/QExpressions3.out', 'rb') as f:
+
+    with open(os.path.join(testdir, 'QExpressions3.out'), 'rb') as f:
         while True:
             query = f.readline().strip()
             binary = f.readline().strip()
@@ -340,12 +342,12 @@ def test_reading_numpy_temporals():
     for query, value in NUMPY_TEMPORAL_EXPRESSIONS.iteritems():
         buffer_ = cStringIO.StringIO()
         binary = binascii.unhexlify(BINARY[query])
-        
+
         buffer_.write('\1\0\0\0')
         buffer_.write(struct.pack('i', len(binary) + 8))
         buffer_.write(binary)
         buffer_.seek(0)
-        
+
         sys.stdout.write( '  %-75s' % query )
         try:
             buffer_.seek(0)
@@ -362,8 +364,8 @@ def test_reading_numpy_temporals():
 
 def test_reading_compressed():
     BINARY = OrderedDict()
-    
-    with open('tests/QCompressedExpressions3.out', 'rb') as f:
+
+    with open(os.path.join(testdir, 'QCompressedExpressions3.out'), 'rb') as f:
         while True:
             query = f.readline().strip()
             binary = f.readline().strip()
@@ -372,23 +374,23 @@ def test_reading_compressed():
                 break
 
             BINARY[query] = binary
-          
-    print 'Compressed deserialization'  
+
+    print 'Compressed deserialization'
     buffer_reader = qreader.QReader(None)
     for query, value in COMPRESSED_EXPRESSIONS.iteritems():
         buffer_ = cStringIO.StringIO()
         binary = binascii.unhexlify(BINARY[query])
-        
+
         buffer_.write('\1\0\1\0')
         buffer_.write(struct.pack('i', len(binary) + 8))
         buffer_.write(binary)
         buffer_.seek(0)
-        
+
         sys.stdout.write( '  %-75s' % query )
         try:
             result = buffer_reader.read(source = buffer_.getvalue()).data
             assert compare(value, result), 'deserialization failed: %s' % (query)
-            
+
             header = buffer_reader.read_header(source = buffer_.getvalue())
             result = buffer_reader.read_data(message_size = header.size, is_compressed = header.is_compressed)
             assert compare(value, result), 'deserialization failed: %s' % (query)
@@ -402,7 +404,7 @@ def test_reading_compressed():
             assert e.message == value.message
             print '.'
 
-        
+
 
 test_reading()
 test_reading_numpy_temporals()
