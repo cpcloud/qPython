@@ -23,6 +23,7 @@ from qpython import MetaData
 from qpython.qreader import QReader, READER_CONFIGURATION, QReaderException
 from qpython.qcollection import QDictionary, qlist
 from qpython.qwriter import QWriter, QWriterException
+from qpython.qtemporal import to_raw_qtemporal
 from qpython.qtype import *
 
 
@@ -131,6 +132,11 @@ class PandasQWriter(QWriter):
 
     serialize = Mapper(QWriter._writer_map)
 
+    @serialize(pandas.Timestamp)
+    def _write_pandas_timestamp(self, data, qtype=None):
+        self._write_atom(to_raw_qtemporal(data.asm8, QTIMESTAMP),
+                         qtype=QTIMESTAMP)
+
     @serialize(pandas.Series)
     def _write_pandas_series(self, data, qtype = None):
         if qtype is not None:
@@ -159,6 +165,9 @@ class PandasQWriter(QWriter):
             self._write_generic_list(data.as_matrix())
         elif qtype == QCHAR:
             self._write_string(data.replace(numpy.nan, ' ').as_matrix().astype(numpy.string_).tostring())
+        elif qtype == QSTRING:
+            self._write_generic_list(data.fillna(' ').values)
+
         elif data.dtype.type not in (numpy.datetime64, numpy.timedelta64):
             data = data.fillna(QNULLMAP[-abs(qtype)][1])
             data = data.as_matrix()
