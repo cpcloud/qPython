@@ -165,6 +165,9 @@ class PandasQWriter(QWriter):
             self._write_generic_list(data.as_matrix())
         elif qtype == QCHAR:
             self._write_string(data.replace(numpy.nan, ' ').as_matrix().astype(numpy.string_).tostring())
+        elif qtype == QSTRING:
+            self._write_generic_list(data.fillna(' ').values)
+
         elif data.dtype.type not in (numpy.datetime64, numpy.timedelta64):
             data = data.fillna(QNULLMAP[-abs(qtype)][1])
             data = data.as_matrix()

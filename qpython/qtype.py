@@ -178,6 +178,7 @@ PY_TYPE = {
     QTIMESPAN:      numpy.int64,
     # artificial qtype for convenient conversion of string lists
     QSTRING_LIST:   numpy.object_,
+    QSTRING:        numpy.object_,
     }
 
 
